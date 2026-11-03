@@ -1,9 +1,10 @@
+using Ovn9.Garage3.Handlers;
 using Ovn9.Garage3.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Ovn9.Garage3;
+namespace Ovn9.Garage3.Abstractions;
 
 public interface IGarageHandler
 {

@@ -1,6 +1,7 @@
+using Ovn9.Garage3.Models;
 using System.Text.Json.Serialization;
 
-namespace Ovn9.Garage3.Models;
+namespace Ovn9.Garage3.Abstractions;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$vehicleType")]
 [JsonDerivedType(typeof(Airplane), "airplane")]

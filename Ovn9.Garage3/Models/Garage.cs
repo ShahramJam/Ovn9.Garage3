@@ -1,3 +1,4 @@
+using Ovn9.Garage3.Abstractions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
     public Garage(int capacity, IEnumerable<T>? initialVehicles = null)
     {
         if (capacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(capacity), "Garage capacity must be greater than zero.");
+            throw new ArgumentOutOfRangeException(nameof(capacity), "Garagekapaciteten måste vara större än noll.");
 
         Capacity = capacity;
         if (initialVehicles is null)
@@ -22,7 +23,7 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
         foreach (var vehicle in initialVehicles)
         {
             if (!TryAddVehicle(vehicle, out var error))
-                throw new ArgumentException($"Could not initialize garage: {error}", nameof(initialVehicles));
+                throw new ArgumentException($"Kunde inte initiera garaget: {error}", nameof(initialVehicles));
         }
     }
 
@@ -42,26 +43,26 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
     {
         if (vehicle is null)
         {
-            error = "A vehicle is required.";
+            error = "Ett fordon måste anges.";
             return false;
         }
 
         if (vehicle.ParkingSpaceUnitsRequired <= 0)
         {
-            error = "A vehicle must require positive parking space.";
+            error = "Ett fordon måste kräva ett positivt parkeringsutrymme.";
             return false;
         }
 
         if (!CanFitVehicle(vehicle))
         {
-            error = "There is not enough parking space for this vehicle.";
+            error = "Det finns inte tillräckligt med parkeringsutrymme för fordonet.";
             return false;
         }
 
         if (_vehicles.Any(existing => string.Equals(
                 existing.RegistrationNumber, vehicle.RegistrationNumber, StringComparison.OrdinalIgnoreCase)))
         {
-            error = "A vehicle with that registration number is already parked.";
+            error = "Ett fordon med det registreringsnumret är redan parkerat.";
             return false;
         }
 
@@ -99,11 +100,11 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
         string? propertyValue = null)
     {
         if (numberOfWheels < 0)
-            throw new ArgumentOutOfRangeException(nameof(numberOfWheels));
+            throw new ArgumentOutOfRangeException(nameof(numberOfWheels), "Antalet hjul får inte vara negativt.");
         if (vehicleType is not null && !typeof(IVehicle).IsAssignableFrom(vehicleType))
-            throw new ArgumentException("Search type must implement IVehicle.", nameof(vehicleType));
+            throw new ArgumentException("Söktypen måste implementera IVehicle.", nameof(vehicleType));
         if ((vehicleProperty is null) != (propertyValue is null))
-            throw new ArgumentException("Both a vehicle property and its value must be provided.");
+            throw new ArgumentException("Både en fordonsegenskap och dess värde måste anges.");
 
         IEnumerable<T> results = _vehicles;
         if (!string.IsNullOrWhiteSpace(color))
@@ -119,7 +120,7 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
     }
 
     public IReadOnlyDictionary<string, int> GetVehicleTypeCounts() =>
-        _vehicles.GroupBy(vehicle => vehicle.GetType().Name)
+        _vehicles.GroupBy(vehicle => SwedishText.GetVehicleTypeName(vehicle.GetType()))
             .ToDictionary(group => group.Key, group => group.Count());
 
     public IEnumerator<T> GetEnumerator() => _vehicles.GetEnumerator();
@@ -132,9 +133,9 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
         {
             (Airplane airplane, "numberofengines") => airplane.NumberOfEngines.ToString(CultureInfo.InvariantCulture),
             (Motorcycle motorcycle, "cylindervolume") => motorcycle.CylinderVolume.ToString("G", CultureInfo.InvariantCulture),
-            (Car car, "fueltype") => car.FuelType.ToString(),
+            (Car car, "fueltype") => SwedishText.GetFuelTypeName(car.FuelType),
             (Bus bus, "numberofseats") => bus.NumberOfSeats.ToString(CultureInfo.InvariantCulture),
-            (Bus bus, "fueltype") => bus.FuelType.ToString(),
+            (Bus bus, "fueltype") => SwedishText.GetFuelTypeName(bus.FuelType),
             (Boat boat, "length") => boat.Length.ToString("G", CultureInfo.InvariantCulture),
             _ => null
         };

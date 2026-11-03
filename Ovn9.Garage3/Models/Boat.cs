@@ -8,7 +8,7 @@ public sealed class Boat : Vehicle
         : base(registrationNumber, color, numberOfWheels)
     {
         if (length <= 0 || double.IsNaN(length) || double.IsInfinity(length))
-            throw new ArgumentOutOfRangeException(nameof(length), "Length must be a positive number.");
+            throw new ArgumentOutOfRangeException(nameof(length), "Längden måste vara ett positivt tal.");
         Length = length;
     }
 

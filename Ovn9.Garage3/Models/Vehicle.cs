@@ -1,3 +1,4 @@
+using Ovn9.Garage3.Abstractions;
 using System;
 using System.Globalization;
 
@@ -8,11 +9,11 @@ public abstract class Vehicle : IVehicle
     protected Vehicle(string registrationNumber, string color, int numberOfWheels)
     {
         if (string.IsNullOrWhiteSpace(registrationNumber))
-            throw new ArgumentException("Registration number is required.", nameof(registrationNumber));
+            throw new ArgumentException("Registreringsnummer måste anges.", nameof(registrationNumber));
         if (string.IsNullOrWhiteSpace(color))
-            throw new ArgumentException("Color is required.", nameof(color));
+            throw new ArgumentException("Färg måste anges.", nameof(color));
         if (numberOfWheels < 0)
-            throw new ArgumentOutOfRangeException(nameof(numberOfWheels), "Number of wheels cannot be negative.");
+            throw new ArgumentOutOfRangeException(nameof(numberOfWheels), "Antalet hjul får inte vara negativt.");
 
         RegistrationNumber = registrationNumber.Trim();
         Color = color.Trim();
@@ -25,6 +26,9 @@ public abstract class Vehicle : IVehicle
     public virtual int ParkingSpaceUnitsRequired => 3;
     public decimal ParkingSpacesRequired => ParkingSpaceUnitsRequired / 3m;
 
-    public override string ToString() =>
-        $"{GetType().Name}: {RegistrationNumber}, {Color}, {NumberOfWheels} wheel(s), {ParkingSpacesRequired.ToString(CultureInfo.InvariantCulture)} parking space(s)";
+    public override string ToString()
+    {
+        var parkingSpaceLabel = ParkingSpacesRequired == 1m ? "parkeringsplats" : "parkeringsplatser";
+        return $"{SwedishText.GetVehicleTypeName(GetType())}: {RegistrationNumber}, {Color}, {NumberOfWheels} hjul, {ParkingSpacesRequired.ToString(CultureInfo.InvariantCulture)} {parkingSpaceLabel}";
+    }
 }

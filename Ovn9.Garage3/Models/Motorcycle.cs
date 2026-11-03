@@ -8,12 +8,12 @@ public sealed class Motorcycle : Vehicle
         : base(registrationNumber, color, numberOfWheels)
     {
         if (cylinderVolume <= 0 || double.IsNaN(cylinderVolume) || double.IsInfinity(cylinderVolume))
-            throw new ArgumentOutOfRangeException(nameof(cylinderVolume), "Cylinder volume must be a positive number.");
+            throw new ArgumentOutOfRangeException(nameof(cylinderVolume), "Cylindervolymen måste vara ett positivt tal.");
         CylinderVolume = cylinderVolume;
     }
 
     public double CylinderVolume { get; }
     public override int ParkingSpaceUnitsRequired => 1;
 
-    public override string ToString() => $"{base.ToString()}, {CylinderVolume} cc";
+    public override string ToString() => $"{base.ToString()}, {CylinderVolume} kubikcentimeter";
 }

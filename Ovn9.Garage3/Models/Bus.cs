@@ -8,9 +8,9 @@ public sealed class Bus : Vehicle
         : base(registrationNumber, color, numberOfWheels)
     {
         if (numberOfSeats <= 0)
-            throw new ArgumentOutOfRangeException(nameof(numberOfSeats), "A bus must have at least one seat.");
+            throw new ArgumentOutOfRangeException(nameof(numberOfSeats), "En buss måste ha minst en sittplats.");
         if (!Enum.IsDefined(fuelType))
-            throw new ArgumentOutOfRangeException(nameof(fuelType));
+            throw new ArgumentOutOfRangeException(nameof(fuelType), "Ogiltig bränsletyp.");
         NumberOfSeats = numberOfSeats;
         FuelType = fuelType;
     }
@@ -18,5 +18,5 @@ public sealed class Bus : Vehicle
     public int NumberOfSeats { get; }
     public FuelType FuelType { get; }
 
-    public override string ToString() => $"{base.ToString()}, {NumberOfSeats} seat(s), {FuelType}";
+    public override string ToString() => $"{base.ToString()}, {NumberOfSeats} {(NumberOfSeats == 1 ? "sittplats" : "sittplatser")}, {SwedishText.GetFuelTypeName(FuelType)}";
 }

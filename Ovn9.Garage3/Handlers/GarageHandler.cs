@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Ovn9.Garage3.Abstractions;
 using Ovn9.Garage3.Models;
 using System;
 using System.Collections.Generic;
@@ -6,7 +8,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Ovn9.Garage3;
+namespace Ovn9.Garage3.Handlers;
 
 public sealed record GarageInfo(string Name, GarageKind Kind, int Capacity, int VehicleCount, decimal UsedSpaces, decimal AvailableSpaces);
 public sealed record GarageFileOperationResult(bool Succeeded, string Message);
@@ -14,37 +16,44 @@ public sealed record GarageFileOperationResult(bool Succeeded, string Message);
 public sealed class GarageHandler : IGarageHandler
 {
     private readonly Dictionary<string, GarageEntry> _garages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ILogger<GarageHandler> _logger;
     private string? _activeGarageName;
 
+    public GarageHandler(ILogger<GarageHandler> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+    }
+
     public bool InitializeGarage(int capacity, out string message) =>
-        CreateGarage("Main Garage", GarageKind.General, capacity, out message);
+        CreateGarage("Huvudgaraget", GarageKind.General, capacity, out message);
 
     public bool CreateGarage(string name, GarageKind kind, int capacity, out string message)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            message = "Garage name is required.";
+            message = "Garagets namn måste anges.";
             return false;
         }
         if (!Enum.IsDefined(kind))
         {
-            message = "Unknown garage profile.";
+            message = "Okänd garageprofil.";
             return false;
         }
         if (capacity <= 0)
         {
-            message = "Capacity must be greater than zero.";
+            message = "Kapaciteten måste vara större än noll.";
             return false;
         }
         if (_garages.ContainsKey(name.Trim()))
         {
-            message = "A garage with that name already exists.";
+            message = "Ett garage med det namnet finns redan.";
             return false;
         }
 
         _garages.Add(name.Trim(), new GarageEntry(kind, new Garage<IVehicle>(capacity)));
         _activeGarageName ??= name.Trim();
-        message = $"{kind} '{name.Trim()}' created with capacity {capacity}.";
+        message = $"Garaget '{name.Trim()}' skapades med profilen {SwedishText.GetGarageKindName(kind)} och kapaciteten {capacity}.";
         return true;
     }
 
@@ -52,12 +61,12 @@ public sealed class GarageHandler : IGarageHandler
     {
         if (string.IsNullOrWhiteSpace(name) || !_garages.TryGetValue(name.Trim(), out _))
         {
-            message = "No garage with that name was found.";
+            message = "Inget garage med det namnet hittades.";
             return false;
         }
 
         _activeGarageName = _garages.Keys.First(key => string.Equals(key, name.Trim(), StringComparison.OrdinalIgnoreCase));
-        message = $"Now working in '{_activeGarageName}'.";
+        message = $"Arbetar nu i '{_activeGarageName}'.";
         return true;
     }
 
@@ -81,28 +90,31 @@ public sealed class GarageHandler : IGarageHandler
 
     public bool TryParkVehicle(IVehicle vehicle, out string message)
     {
-        var (_, entry) = GetActiveEntry();
+        var (garageName, entry) = GetActiveEntry();
         if (vehicle is null)
         {
-            message = "A vehicle is required.";
+            message = "Ett fordon måste anges.";
             return false;
         }
         if (!IsAllowed(entry.Kind, vehicle.GetType()))
         {
-            message = $"{vehicle.GetType().Name} vehicles are not allowed in this {entry.Kind} garage.";
+            message = $"Fordonstypen {SwedishText.GetVehicleTypeName(vehicle.GetType())} är inte tillåten i garageprofilen {SwedishText.GetGarageKindName(entry.Kind)}.";
             return false;
         }
 
-        return entry.Garage.TryAddVehicle(vehicle, out message);
+        var parked = entry.Garage.TryAddVehicle(vehicle, out message);
+
+        return parked;
     }
 
     public bool TryRemoveVehicle(string registrationNumber, out IVehicle? vehicle, out string message)
     {
-        var garage = GetActiveEntry().Entry.Garage;
-        var removed = garage.TryRemoveVehicle(registrationNumber, out vehicle);
+        var (garageName, entry) = GetActiveEntry();
+        var removed = entry.Garage.TryRemoveVehicle(registrationNumber, out vehicle);
         message = removed
-            ? $"Vehicle {vehicle!.RegistrationNumber} was removed."
-            : "No vehicle with that registration number was found.";
+            ? $"Fordonet med registreringsnummer {vehicle!.RegistrationNumber} togs bort."
+            : "Inget fordon med det registreringsnumret hittades.";
+
         return removed;
     }
 
@@ -123,9 +135,13 @@ public sealed class GarageHandler : IGarageHandler
     public async Task<GarageFileOperationResult> SaveAsync(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
-            return new(false, "A save file path is required.");
+        {
+            return new(false, "En sökväg till sparfilen måste anges.");
+        }
         if (_garages.Count == 0)
-            return new(false, "There are no garages to save.");
+        {
+            return new(false, "Det finns inga garage att spara.");
+        }
 
         try
         {
@@ -142,62 +158,66 @@ public sealed class GarageHandler : IGarageHandler
             };
             var json = JsonSerializer.Serialize(document, GarageJson.Options);
             await File.WriteAllTextAsync(filePath, json).ConfigureAwait(false);
-            return new(true, $"Saved {_garages.Count} garage(s) to '{filePath}'.");
+            return new(true, $"Sparade {_garages.Count} garage i filen '{filePath}'.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {
-            return new(false, $"Could not save garages: {exception.Message}");
+            _logger.LogError(exception, "Det gick inte att spara garagen i filen {Filsokvag}.", filePath);
+            return new(false, $"Kunde inte spara garagen: {exception.Message}");
         }
     }
 
     public async Task<GarageFileOperationResult> LoadAsync(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
-            return new(false, "A load file path is required.");
+        {
+            return new(false, "En sökväg till filen måste anges.");
+        }
 
         try
         {
             var json = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
             var document = JsonSerializer.Deserialize<GarageStoreDocument>(json, GarageJson.Options);
             if (document?.Garages is null || document.Garages.Count == 0)
-                throw new InvalidDataException("The save file contains no garages.");
+                throw new InvalidDataException("Sparfilen innehåller inga garage.");
 
             var restored = new Dictionary<string, GarageEntry>(StringComparer.OrdinalIgnoreCase);
             foreach (var savedGarage in document.Garages)
             {
                 if (savedGarage is null || string.IsNullOrWhiteSpace(savedGarage.Name) || !Enum.IsDefined(savedGarage.Kind))
-                    throw new InvalidDataException("A saved garage has an invalid name or profile.");
+                    throw new InvalidDataException("Ett sparat garage har ett ogiltigt namn eller en ogiltig profil.");
                 if (savedGarage.Vehicles is null)
-                    throw new InvalidDataException($"Garage '{savedGarage.Name}' has no valid vehicle list.");
+                    throw new InvalidDataException($"Garaget '{savedGarage.Name}' saknar en giltig fordonslista.");
                 if (restored.ContainsKey(savedGarage.Name.Trim()))
-                    throw new InvalidDataException($"Duplicate garage name '{savedGarage.Name}'.");
+                    throw new InvalidDataException($"Garagenamnet '{savedGarage.Name}' förekommer flera gånger.");
 
                 var garage = new Garage<IVehicle>(savedGarage.Capacity, savedGarage.Vehicles);
                 if (garage.Any(vehicle => !IsAllowed(savedGarage.Kind, vehicle.GetType())))
-                    throw new InvalidDataException($"Garage '{savedGarage.Name}' contains a vehicle not allowed by its profile.");
+                    throw new InvalidDataException($"Garaget '{savedGarage.Name}' innehåller ett fordon som inte är tillåtet enligt profilen.");
                 restored.Add(savedGarage.Name.Trim(), new GarageEntry(savedGarage.Kind, garage));
             }
 
             var activeName = restored.Keys.FirstOrDefault(name => string.Equals(name, document.ActiveGarageName, StringComparison.OrdinalIgnoreCase));
             if (activeName is null)
-                throw new InvalidDataException("The saved active garage does not exist.");
+                throw new InvalidDataException("Det aktiva garaget i sparfilen finns inte.");
 
             _garages.Clear();
             foreach (var pair in restored)
                 _garages.Add(pair.Key, pair.Value);
             _activeGarageName = activeName;
-            return new(true, $"Loaded {_garages.Count} garage(s) from '{filePath}'.");
+            return new(true, $"Läste in {_garages.Count} garage från '{filePath}'.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or NotSupportedException or ArgumentException or InvalidDataException)
         {
-            return new(false, $"Could not load garages: {exception.Message}");
+            _logger.LogError(exception, "Det gick inte att läsa in garagen från filen {Filsokvag}.", filePath);
+            return new(false, $"Kunde inte läsa in garagen: {exception.Message}");
         }
     }
 
     private (string Name, GarageEntry Entry) GetActiveEntry()
     {
         if (_activeGarageName is null || !_garages.TryGetValue(_activeGarageName, out var entry))
-            throw new InvalidOperationException("No garage has been initialized.");
+            throw new InvalidOperationException("Inget garage har initierats.");
         return (_activeGarageName, entry);
     }
 

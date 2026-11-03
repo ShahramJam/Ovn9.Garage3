@@ -8,11 +8,11 @@ public sealed class Car : Vehicle
         : base(registrationNumber, color, numberOfWheels)
     {
         if (!Enum.IsDefined(fuelType))
-            throw new ArgumentOutOfRangeException(nameof(fuelType));
+            throw new ArgumentOutOfRangeException(nameof(fuelType), "Ogiltig bränsletyp.");
         FuelType = fuelType;
     }
 
     public FuelType FuelType { get; }
 
-    public override string ToString() => $"{base.ToString()}, {FuelType}";
+    public override string ToString() => $"{base.ToString()}, {SwedishText.GetFuelTypeName(FuelType)}";
 }

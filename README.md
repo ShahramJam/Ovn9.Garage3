@@ -22,6 +22,7 @@ Edit `Ovn9.Garage3/appsettings.json` to configure the initial garage capacity an
 ```
 
 Saving and loading are available in the console menu. The JSON file retains vehicle subclasses, garage profiles, capacities, and the active garage.
+The application writes logs to the console using .NET's built-in `Microsoft.Extensions.Logging` console provider.
 
 ## Tests
 

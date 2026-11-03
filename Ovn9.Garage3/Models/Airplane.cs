@@ -8,12 +8,12 @@ public sealed class Airplane : Vehicle
         : base(registrationNumber, color, numberOfWheels)
     {
         if (numberOfEngines <= 0)
-            throw new ArgumentOutOfRangeException(nameof(numberOfEngines), "An airplane must have at least one engine.");
+            throw new ArgumentOutOfRangeException(nameof(numberOfEngines), "Ett flygplan måste ha minst en motor.");
         NumberOfEngines = numberOfEngines;
     }
 
     public int NumberOfEngines { get; }
     public override int ParkingSpaceUnitsRequired => 9;
 
-    public override string ToString() => $"{base.ToString()}, {NumberOfEngines} engine(s)";
+    public override string ToString() => $"{base.ToString()}, {NumberOfEngines} {(NumberOfEngines == 1 ? "motor" : "motorer")}";
 }

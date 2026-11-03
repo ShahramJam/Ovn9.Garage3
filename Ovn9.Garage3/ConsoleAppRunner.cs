@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Ovn9.Garage3.Abstractions;
 using Ovn9.Garage3.Models;
 using System;
 using System.Globalization;
@@ -6,41 +8,45 @@ using System.Threading.Tasks;
 
 namespace Ovn9.Garage3;
 
-public sealed class ConsoleUI : IUI
+public sealed class ConsoleAppRunner : IAppRunner
 {
     private const string DefaultSavePath = "garage-data.json";
     private readonly IGarageHandler _handler;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ConsoleAppRunner> _logger;
 
-    public ConsoleUI(IGarageHandler handler, IConfiguration configuration)
+    public ConsoleAppRunner(IGarageHandler handler, IConfiguration configuration, ILogger<ConsoleAppRunner> logger)
     {
         _handler = handler ?? throw new ArgumentNullException(nameof(handler));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task RunAsync()
     {
-        var capacity = 10;
+        const int defaultCapacity = 10;
+        var capacity = defaultCapacity;
         var configuredCapacity = _configuration["Garage:DefaultCapacity"];
         if (configuredCapacity is not null && (!int.TryParse(configuredCapacity, out capacity) || capacity <= 0))
         {
-            Console.WriteLine("Garage:DefaultCapacity must be a positive whole number. Using default capacity 10.");
-            capacity = 10;
+            Console.WriteLine("Standardkapaciteten måste vara ett positivt heltal. Värdet 10 används.");
+            capacity = defaultCapacity;
         }
 
-        if (!_handler.CreateGarage("Main Garage", GarageKind.General, capacity, out var message))
+        if (!_handler.CreateGarage("Huvudgaraget", GarageKind.General, capacity, out var message))
         {
+            _logger.LogError("Det gick inte att initiera standardgaraget: {Orsak}", message);
             Console.WriteLine(message);
             return;
         }
 
-        Console.WriteLine($"Garage 3.0 - {message}");
+        Console.WriteLine($"Garaget 3.0 - {message}");
         while (true)
         {
             var active = _handler.GetActiveGarageInfo();
-            Console.WriteLine($"\nActive garage: {active.Name} ({active.Kind}) - {active.UsedSpaces}/{active.Capacity} spaces used, {active.AvailableSpaces} available");
-            Console.WriteLine("1. List vehicles   2. Vehicle counts   3. Park vehicle   4. Remove vehicle\n5. Find vehicle    6. Search vehicles   7. Create garage   8. Switch garage\n9. List garages    10. Save garages     11. Load garages\n0. Exit");
-            Console.Write("Choose: ");
+            Console.WriteLine($"\nAktivt garage: {active.Name} ({SwedishText.GetGarageKindName(active.Kind)}) - {active.UsedSpaces}/{active.Capacity} parkeringsplatser upptagna, {active.AvailableSpaces} lediga");
+            Console.WriteLine("1. Visa fordon   2. Fordonsantal   3. Parkera fordon   4. Ta bort fordon\n5. Hitta fordon   6. Sök fordon      7. Skapa garage    8. Byt garage\n9. Visa garage    10. Spara garage    11. Läs in garage\n0. Avsluta");
+            Console.Write("Välj: ");
             switch (Console.ReadLine())
             {
                 case "1": ListVehicles(); break;
@@ -54,9 +60,16 @@ public sealed class ConsoleUI : IUI
                 case "9": ListGarages(); break;
                 case "10": await SaveGaragesAsync().ConfigureAwait(false); break;
                 case "11": await LoadGaragesAsync().ConfigureAwait(false); break;
-                case "0": return;
-                case null: return;
-                default: Console.WriteLine("Please choose a listed option."); break;
+                case "0":
+
+                    return;
+                case null:
+
+                    return;
+                default:
+
+                    Console.WriteLine("Välj ett av alternativen i listan.");
+                    break;
             }
         }
     }
@@ -66,7 +79,7 @@ public sealed class ConsoleUI : IUI
         var vehicles = _handler.GetVehicles();
         if (vehicles.Count == 0)
         {
-            Console.WriteLine("The garage is empty.");
+            Console.WriteLine("Garaget är tomt.");
             return;
         }
         foreach (var vehicle in vehicles)
@@ -78,7 +91,7 @@ public sealed class ConsoleUI : IUI
         var counts = _handler.GetVehicleTypeCounts();
         if (counts.Count == 0)
         {
-            Console.WriteLine("The garage is empty.");
+            Console.WriteLine("Garaget är tomt.");
             return;
         }
         foreach (var (type, count) in counts)
@@ -90,24 +103,24 @@ public sealed class ConsoleUI : IUI
         var availableTypes = _handler.GetVehicleTypesThatFit();
         if (availableTypes.Count == 0)
         {
-            Console.WriteLine("No vehicle type is currently allowed and fits in this garage.");
+            Console.WriteLine("Ingen tillåten fordonstyp får plats i det här garaget.");
             return;
         }
-        Console.WriteLine("Vehicle types that fit:");
+        Console.WriteLine("Fordonstyper som får plats:");
         for (var index = 0; index < availableTypes.Count; index++)
-            Console.WriteLine($"{index + 1}. {availableTypes[index].Name}");
-        var selection = ReadPositiveInt("Choose vehicle type: ");
+            Console.WriteLine($"{index + 1}. {SwedishText.GetVehicleTypeName(availableTypes[index])}");
+        var selection = ReadPositiveInt("Välj fordonstyp: ");
         if (selection is null)
             return;
         if (selection > availableTypes.Count)
         {
-            Console.WriteLine("That vehicle type is not available.");
+            Console.WriteLine("Den fordonstypen är inte tillgänglig.");
             return;
         }
 
-        var registration = ReadRequired("Registration number: ");
-        var color = ReadRequired("Color: ");
-        var wheels = ReadPositiveInt("Number of wheels (0 if none): ", allowZero: true);
+        var registration = ReadRequired("Registreringsnummer: ");
+        var color = ReadRequired("Färg: ");
+        var wheels = ReadPositiveInt("Antal hjul (0 om inga): ", allowZero: true);
         if (registration is null || color is null || wheels is null)
             return;
 
@@ -115,29 +128,30 @@ public sealed class ConsoleUI : IUI
         {
             var selectedType = availableTypes[selection.Value - 1];
             IVehicle vehicle = selectedType == typeof(Airplane)
-                ? new Airplane(registration, color, wheels.Value, ReadPositiveInt("Number of engines: ") ?? 0)
+                ? new Airplane(registration, color, wheels.Value, ReadPositiveInt("Antal motorer: ") ?? 0)
                 : selectedType == typeof(Motorcycle)
-                    ? new Motorcycle(registration, color, wheels.Value, ReadPositiveDouble("Cylinder volume (cc): ") ?? 0)
+                    ? new Motorcycle(registration, color, wheels.Value, ReadPositiveDouble("Cylindervolym (kubikcentimeter): ") ?? 0)
                     : selectedType == typeof(Car)
                         ? new Car(registration, color, wheels.Value, ReadFuelType())
                         : selectedType == typeof(Bus)
-                            ? new Bus(registration, color, wheels.Value, ReadPositiveInt("Number of seats: ") ?? 0, ReadFuelType())
-                            : new Boat(registration, color, wheels.Value, ReadPositiveDouble("Length (m): ") ?? 0);
+                            ? new Bus(registration, color, wheels.Value, ReadPositiveInt("Antal sittplatser: ") ?? 0, ReadFuelType())
+                            : new Boat(registration, color, wheels.Value, ReadPositiveDouble("Längd (m): ") ?? 0);
 
             if (_handler.TryParkVehicle(vehicle, out var message))
-                Console.WriteLine($"{vehicle.RegistrationNumber} was parked.");
+                Console.WriteLine($"{vehicle.RegistrationNumber} parkerades.");
             else
                 Console.WriteLine(message);
         }
         catch (ArgumentException exception)
         {
-            Console.WriteLine($"Invalid vehicle details: {exception.Message}");
+
+            Console.WriteLine($"Ogiltiga fordonsuppgifter: {exception.Message}");
         }
     }
 
     private void RemoveVehicle()
     {
-        var registration = ReadRequired("Registration number: ");
+        var registration = ReadRequired("Registreringsnummer: ");
         if (registration is not null)
         {
             _handler.TryRemoveVehicle(registration, out _, out var message);
@@ -147,23 +161,23 @@ public sealed class ConsoleUI : IUI
 
     private void FindVehicle()
     {
-        var registration = ReadRequired("Registration number: ");
+        var registration = ReadRequired("Registreringsnummer: ");
         if (registration is null)
             return;
         var vehicle = _handler.FindVehicle(registration);
-        Console.WriteLine(vehicle is null ? "No vehicle with that registration number was found." : vehicle.ToString());
+        Console.WriteLine(vehicle is null ? "Inget fordon med det registreringsnumret hittades." : vehicle.ToString());
     }
 
     private void SearchVehicles()
     {
-        Console.Write("Color (blank for any): ");
+        Console.Write("Färg (lämna tomt för alla): ");
         var color = Console.ReadLine();
-        var wheels = ReadOptionalInt("Number of wheels (blank for any): ");
+        var wheels = ReadOptionalInt("Antal hjul (lämna tomt för alla): ");
         if (wheels == int.MinValue)
             return;
 
-        Console.WriteLine("Vehicle type: blank for any, 1. Airplane, 2. Motorcycle, 3. Car, 4. Bus, 5. Boat");
-        Console.Write("Type: ");
+        Console.WriteLine("Fordonstyp: lämna tomt för alla, 1. Flygplan, 2. Motorcykel, 3. Bil, 4. Buss, 5. Båt");
+        Console.Write("Typ: ");
         var type = Console.ReadLine();
         var vehicleType = type switch
         {
@@ -177,12 +191,12 @@ public sealed class ConsoleUI : IUI
         };
         if (vehicleType == typeof(void))
         {
-            Console.WriteLine("Unknown vehicle type.");
+            Console.WriteLine("Okänd fordonstyp.");
             return;
         }
 
-        Console.WriteLine("Optional vehicle property: blank for none, 1. NumberOfEngines, 2. CylinderVolume, 3. FuelType, 4. NumberOfSeats, 5. Length");
-        Console.Write("Property: ");
+        Console.WriteLine("Valfri fordonsegenskap: lämna tomt för att inte filtrera, 1. Antal motorer, 2. Cylindervolym, 3. Bränsle, 4. Antal sittplatser, 5. Längd");
+        Console.Write("Egenskap: ");
         var propertyName = Console.ReadLine() switch
         {
             "1" => "NumberOfEngines",
@@ -195,17 +209,17 @@ public sealed class ConsoleUI : IUI
         };
         if (propertyName == string.Empty)
         {
-            Console.WriteLine("Unknown vehicle property.");
+            Console.WriteLine("Okänd fordonsegenskap.");
             return;
         }
-        var propertyValue = propertyName is null ? null : ReadRequired("Property value (numeric values use a period): ");
+        var propertyValue = propertyName is null ? null : ReadRequired("Egenskapsvärde (använd punkt som decimaltecken): ");
         if (propertyName is not null && propertyValue is null)
             return;
 
         var results = _handler.SearchVehicles(color, wheels, vehicleType, propertyName, propertyValue);
         if (results.Count == 0)
         {
-            Console.WriteLine("No matching vehicles were found.");
+            Console.WriteLine("Inga fordon matchade sökningen.");
             return;
         }
         foreach (var vehicle in results)
@@ -214,10 +228,10 @@ public sealed class ConsoleUI : IUI
 
     private void CreateGarage()
     {
-        var name = ReadRequired("Garage name: ");
+        var name = ReadRequired("Garagets namn: ");
         if (name is null)
             return;
-        Console.WriteLine("Profile: 1. General  2. Hangar (airplanes)  3. Motorcycle garage  4. Boat dock");
+        Console.WriteLine("Profil: 1. Allmänt  2. Hangar (flygplan)  3. Motorcykelgarage  4. Båtbrygga");
         var kind = Console.ReadLine() switch
         {
             "1" => GarageKind.General,
@@ -228,10 +242,10 @@ public sealed class ConsoleUI : IUI
         };
         if (kind is null)
         {
-            Console.WriteLine("Unknown garage profile.");
+            Console.WriteLine("Okänd garageprofil.");
             return;
         }
-        var capacity = ReadPositiveInt("Capacity in parking spaces: ");
+        var capacity = ReadPositiveInt("Kapacitet i parkeringsplatser: ");
         if (capacity is null)
             return;
         if (_handler.CreateGarage(name, kind.Value, capacity.Value, out var message))
@@ -241,7 +255,7 @@ public sealed class ConsoleUI : IUI
 
     private void SwitchGarage()
     {
-        var name = ReadRequired("Garage name: ");
+        var name = ReadRequired("Garagets namn: ");
         if (name is not null)
         {
             _handler.SelectGarage(name, out var message);
@@ -252,12 +266,12 @@ public sealed class ConsoleUI : IUI
     private void ListGarages()
     {
         foreach (var garage in _handler.GetGarages())
-            Console.WriteLine($"{garage.Name} ({garage.Kind}): {garage.VehicleCount} vehicle(s), {garage.UsedSpaces}/{garage.Capacity} spaces used");
+            Console.WriteLine($"{garage.Name} ({SwedishText.GetGarageKindName(garage.Kind)}): {garage.VehicleCount} fordon, {garage.UsedSpaces}/{garage.Capacity} parkeringsplatser upptagna");
     }
 
     private async Task SaveGaragesAsync()
     {
-        var path = ReadOptionalPath("Save file", GetConfiguredSavePath());
+        var path = ReadOptionalPath("Sökväg till fil att spara", GetConfiguredSavePath());
         if (path is not null)
         {
             var result = await _handler.SaveAsync(path).ConfigureAwait(false);
@@ -267,7 +281,7 @@ public sealed class ConsoleUI : IUI
 
     private async Task LoadGaragesAsync()
     {
-        var path = ReadOptionalPath("Load file", GetConfiguredSavePath());
+        var path = ReadOptionalPath("Sökväg till fil att läsa in", GetConfiguredSavePath());
         if (path is not null)
         {
             var result = await _handler.LoadAsync(path).ConfigureAwait(false);
@@ -279,7 +293,7 @@ public sealed class ConsoleUI : IUI
 
     private static string? ReadOptionalPath(string prompt, string defaultPath)
     {
-        Console.Write($"{prompt} path (Enter for {defaultPath}): ");
+        Console.Write($"{prompt} (tryck på Enter för {defaultPath}): ");
         var input = Console.ReadLine();
         return input is null ? null : string.IsNullOrWhiteSpace(input) ? defaultPath : input.Trim();
     }
@@ -294,7 +308,7 @@ public sealed class ConsoleUI : IUI
                 return null;
             if (!string.IsNullOrWhiteSpace(value))
                 return value.Trim();
-            Console.WriteLine("A value is required.");
+            Console.WriteLine("Ett värde måste anges.");
         }
     }
 
@@ -308,7 +322,7 @@ public sealed class ConsoleUI : IUI
                 return null;
             if (int.TryParse(input, out var value) && (allowZero ? value >= 0 : value > 0))
                 return value;
-            Console.WriteLine(allowZero ? "Enter a non-negative whole number." : "Enter a positive whole number.");
+            Console.WriteLine(allowZero ? "Ange ett heltal som är noll eller större." : "Ange ett positivt heltal.");
         }
     }
 
@@ -323,7 +337,7 @@ public sealed class ConsoleUI : IUI
             if (double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
                 && value > 0 && double.IsFinite(value))
                 return value;
-            Console.WriteLine("Enter a positive number using a period as the decimal separator.");
+            Console.WriteLine("Ange ett positivt tal med punkt som decimaltecken.");
         }
     }
 
@@ -339,7 +353,7 @@ public sealed class ConsoleUI : IUI
                 return null;
             if (int.TryParse(input, out var value) && value >= 0)
                 return value;
-            Console.WriteLine("Enter a non-negative whole number or leave blank.");
+            Console.WriteLine("Ange ett heltal som är noll eller större, eller lämna tomt.");
         }
     }
 
@@ -347,14 +361,14 @@ public sealed class ConsoleUI : IUI
     {
         while (true)
         {
-            Console.Write("Fuel (1. Gasoline, 2. Diesel, 3. Electric): ");
+            Console.Write("Bränsle (1. Bensin, 2. Diesel, 3. El): ");
             switch (Console.ReadLine())
             {
                 case "1": return FuelType.Gasoline;
                 case "2": return FuelType.Diesel;
                 case "3": return FuelType.Electric;
-                case null: throw new ArgumentException("Input ended before a fuel type was selected.");
-                default: Console.WriteLine("Choose 1, 2, or 3."); break;
+                case null: throw new ArgumentException("Inmatningen avslutades innan en bränsletyp valdes.");
+                default: Console.WriteLine("Välj 1, 2 eller 3."); break;
             }
         }
     }

@@ -1,0 +1,17 @@
+using System.Text.Json.Serialization;
+
+namespace Ovn9.Garage3.Models;
+
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$vehicleType")]
+[JsonDerivedType(typeof(Airplane), "airplane")]
+[JsonDerivedType(typeof(Motorcycle), "motorcycle")]
+[JsonDerivedType(typeof(Car), "car")]
+[JsonDerivedType(typeof(Bus), "bus")]
+[JsonDerivedType(typeof(Boat), "boat")]
+public interface IVehicle
+{
+    string RegistrationNumber { get; }
+    string Color { get; }
+    int NumberOfWheels { get; }
+    int ParkingSpaceUnitsRequired { get; }
+}

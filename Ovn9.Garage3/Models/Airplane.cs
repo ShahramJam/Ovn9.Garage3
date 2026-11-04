@@ -2,6 +2,7 @@ using System;
 
 namespace Ovn9.Garage3.Models;
 
+// Representerar ett flygplan med motorinformation och särskilt parkeringsbehov
 public sealed class Airplane : Vehicle
 {
     public Airplane(string registrationNumber, string color, int numberOfWheels, int numberOfEngines)

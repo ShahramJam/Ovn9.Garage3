@@ -1,7 +1,9 @@
+using Ovn9.Garage3.Common;
 using System;
 
 namespace Ovn9.Garage3.Models;
 
+// Representerar en bil med tillhörande bränsletyp
 public sealed class Car : Vehicle
 {
     public Car(string registrationNumber, string color, int numberOfWheels, FuelType fuelType)

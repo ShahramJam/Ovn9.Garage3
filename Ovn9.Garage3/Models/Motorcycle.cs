@@ -2,6 +2,7 @@ using System;
 
 namespace Ovn9.Garage3.Models;
 
+// Representerar en motorcykel med cylindervolym och ett tredjedels parkeringsutrymme
 public sealed class Motorcycle : Vehicle
 {
     public Motorcycle(string registrationNumber, string color, int numberOfWheels, double cylinderVolume)

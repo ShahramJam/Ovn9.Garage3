@@ -1,4 +1,5 @@
 using Ovn9.Garage3.Abstractions;
+using Ovn9.Garage3.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ using System.Linq;
 
 namespace Ovn9.Garage3.Models;
 
+// Hanterar fordon upp till angiven kapacitet samt parkering, borttagning och sökning
 public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
 {
     private readonly List<T> _vehicles = [];
@@ -29,6 +31,7 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
 
     public int Capacity { get; }
     public int Count => _vehicles.Count;
+    // Tre enheter motsvarar en parkeringsplats, så även tredjedelsplatser räknas utan avrundning.
     public long UsedParkingSpaceUnits => _vehicles.Sum(vehicle => (long)vehicle.ParkingSpaceUnitsRequired);
     public decimal UsedParkingSpaces => UsedParkingSpaceUnits / 3m;
     public decimal AvailableSpaces => (Capacity * 3L - UsedParkingSpaceUnits) / 3m;
@@ -103,6 +106,7 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
             throw new ArgumentOutOfRangeException(nameof(numberOfWheels), "Antalet hjul får inte vara negativt.");
         if (vehicleType is not null && !typeof(IVehicle).IsAssignableFrom(vehicleType))
             throw new ArgumentException("Söktypen måste implementera IVehicle.", nameof(vehicleType));
+        // Egenskapsnamn och värde måste anges tillsammans.
         if ((vehicleProperty is null) != (propertyValue is null))
             throw new ArgumentException("Både en fordonsegenskap och dess värde måste anges.");
 
@@ -129,6 +133,7 @@ public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
 
     private static bool MatchesProperty(T vehicle, string propertyName, string expectedValue)
     {
+        // Egenskaperna varierar mellan fordonstyper; invariant talformat gör sökningen oberoende av datorns språkinställning.
         var actualValue = (vehicle, propertyName.Trim().ToLowerInvariant()) switch
         {
             (Airplane airplane, "numberofengines") => airplane.NumberOfEngines.ToString(CultureInfo.InvariantCulture),

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace Ovn9.Garage3;
 
+// Startar appen genom att konfigurera beroenden, loggning och huvudflödet
 public static class Program
 {
     static async Task Main(string[] args)

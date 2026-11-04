@@ -1,7 +1,9 @@
+using Ovn9.Garage3.Common;
 using System;
 
 namespace Ovn9.Garage3.Models;
 
+// Representerar en buss med sittplatser och bränsletyp
 public sealed class Bus : Vehicle
 {
     public Bus(string registrationNumber, string color, int numberOfWheels, int numberOfSeats, FuelType fuelType)

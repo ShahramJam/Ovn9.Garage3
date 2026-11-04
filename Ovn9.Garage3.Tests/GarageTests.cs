@@ -1,10 +1,12 @@
 ﻿using Microsoft.Extensions.Logging.Abstractions;
 using Ovn9.Garage3.Abstractions;
+using Ovn9.Garage3.Common;
 using Ovn9.Garage3.Handlers;
 using Ovn9.Garage3.Models;
 
 namespace Ovn9.Garage3.Tests;
 
+// Samlar automatiserade tester för parkering, sökning, garagehantering
 public class GarageTests
 {
     [Fact]
@@ -125,7 +127,7 @@ public class GarageTests
     {
         var garage = new Garage<IVehicle>(2);
 
-        var parked = garage.AddVehicle(new Boat("BOAT01", "White", 0, 7.5));
+        var parked = garage.AddVehicle(new Boat("BOA001", "White", 0, 7.5));
         var airplaneParked = garage.AddVehicle(new Airplane("AIR001", "Blue", 3, 2));
 
         Assert.True(parked);

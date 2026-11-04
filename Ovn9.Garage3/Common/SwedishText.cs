@@ -1,7 +1,9 @@
+using Ovn9.Garage3.Models;
 using System;
 
-namespace Ovn9.Garage3.Models;
+namespace Ovn9.Garage3.Common;
 
+// Översätter fordonstyper, garageprofiler och bränsletyper till svenska visningsnamn.
 internal static class SwedishText
 {
     internal static string GetVehicleTypeName(Type vehicleType) => vehicleType == typeof(Airplane) ? "Flygplan"

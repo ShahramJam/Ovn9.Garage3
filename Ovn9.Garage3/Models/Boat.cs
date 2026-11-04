@@ -2,6 +2,7 @@ using System;
 
 namespace Ovn9.Garage3.Models;
 
+// Representerar en båt med längd och särskilt parkeringsbehov
 public sealed class Boat : Vehicle
 {
     public Boat(string registrationNumber, string color, int numberOfWheels, double length)

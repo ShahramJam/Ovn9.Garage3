@@ -1,15 +1,22 @@
 using Ovn9.Garage3.Abstractions;
+using Ovn9.Garage3.Common;
 using System;
 using System.Globalization;
 
 namespace Ovn9.Garage3.Models;
 
+// Gemensam basklass för fordonens grundegenskaper, validering och textrepresentation
 public abstract class Vehicle : IVehicle
 {
     protected Vehicle(string registrationNumber, string color, int numberOfWheels)
     {
-        if (string.IsNullOrWhiteSpace(registrationNumber))
-            throw new ArgumentException("Registreringsnummer måste anges.", nameof(registrationNumber));
+
+        if (!Validator.IsValidRegistrationNumber(registrationNumber))
+        {
+            throw new ArgumentException(
+                "Registreringsnumret måste bestå av tre bokstäver följt av tre siffror, till exempel ABc123.",
+                nameof(registrationNumber));
+        }
         if (string.IsNullOrWhiteSpace(color))
             throw new ArgumentException("Färg måste anges.", nameof(color));
         if (numberOfWheels < 0)

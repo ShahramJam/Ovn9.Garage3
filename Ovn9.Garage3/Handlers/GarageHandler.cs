@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Ovn9.Garage3.Abstractions;
+using Ovn9.Garage3.Common;
 using Ovn9.Garage3.Models;
 using System;
 using System.Collections.Generic;
@@ -10,9 +11,13 @@ using System.Threading.Tasks;
 
 namespace Ovn9.Garage3.Handlers;
 
+// Samlar garageuppgifter som behövs för att visa profil, kapacitet och beläggning
 public sealed record GarageInfo(string Name, GarageKind Kind, int Capacity, int VehicleCount, decimal UsedSpaces, decimal AvailableSpaces);
+
+// Bär resultatet och meddelandet från en spar- eller inläsningsoperation
 public sealed record GarageFileOperationResult(bool Succeeded, string Message);
 
+// Samordnar garagehantering, fordonsregler och sparning/inläsning av data
 public sealed class GarageHandler : IGarageHandler
 {
     private readonly Dictionary<string, GarageEntry> _garages = new(StringComparer.OrdinalIgnoreCase);
@@ -65,6 +70,7 @@ public sealed class GarageHandler : IGarageHandler
             return false;
         }
 
+        // Hämta den ursprungliga nyckeln så att visningen behåller garagets registrerade skiftläge.
         _activeGarageName = _garages.Keys.First(key => string.Equals(key, name.Trim(), StringComparison.OrdinalIgnoreCase));
         message = $"Arbetar nu i '{_activeGarageName}'.";
         return true;
@@ -181,6 +187,7 @@ public sealed class GarageHandler : IGarageHandler
             if (document?.Garages is null || document.Garages.Count == 0)
                 throw new InvalidDataException("Sparfilen innehåller inga garage.");
 
+            // Ersätt inte befintliga garage förrän hela sparfilen har validerats.
             var restored = new Dictionary<string, GarageEntry>(StringComparer.OrdinalIgnoreCase);
             foreach (var savedGarage in document.Garages)
             {
@@ -236,20 +243,24 @@ public sealed class GarageHandler : IGarageHandler
 
     private static bool IsAllowed(GarageKind kind, Type vehicleType) => GetAllowedVehicleTypes(kind).Contains(vehicleType);
 
+    // Värdena måste motsvara fordonens krav så att förhandskontrollen stämmer med själva parkeringen.
     private static int GetParkingUnits(Type vehicleType) => vehicleType == typeof(Airplane) ? 9
         : vehicleType == typeof(Boat) ? 6
         : vehicleType == typeof(Motorcycle) ? 1
         : 3;
 
+    // Knyter ihop en garageprofil med dess fordonslista.
     private sealed record GarageEntry(GarageKind Kind, Garage<IVehicle> Garage);
 }
 
+// Beskriver hela garagefilen, inklusive vilket garage som var aktivt när den sparades.
 internal sealed class GarageStoreDocument
 {
     public string ActiveGarageName { get; set; } = string.Empty;
     public List<GarageStoreEntry> Garages { get; set; } = [];
 }
 
+// Beskriver ett enskilt garage och dess fordon i sparfilen.
 internal sealed class GarageStoreEntry
 {
     public string Name { get; set; } = string.Empty;
@@ -258,6 +269,7 @@ internal sealed class GarageStoreEntry
     public List<IVehicle> Vehicles { get; set; } = [];
 }
 
+// Håller de gemensamma inställningarna för JSON-serialisering av garage.
 internal static class GarageJson
 {
     internal static readonly JsonSerializerOptions Options = new() { WriteIndented = true };

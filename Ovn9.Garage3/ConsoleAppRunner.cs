@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Ovn9.Garage3.Abstractions;
+using Ovn9.Garage3.Common;
 using Ovn9.Garage3.Models;
 using System;
 using System.Globalization;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace Ovn9.Garage3;
 
+// Hanterar konsolens menyflöde och skickar användarens val vidare till garagehanteraren
 public sealed class ConsoleAppRunner : IAppRunner
 {
     private const string DefaultSavePath = "garage-data.json";
@@ -61,13 +63,10 @@ public sealed class ConsoleAppRunner : IAppRunner
                 case "10": await SaveGaragesAsync().ConfigureAwait(false); break;
                 case "11": await LoadGaragesAsync().ConfigureAwait(false); break;
                 case "0":
-
                     return;
                 case null:
-
                     return;
                 default:
-
                     Console.WriteLine("Välj ett av alternativen i listan.");
                     break;
             }
@@ -127,6 +126,7 @@ public sealed class ConsoleAppRunner : IAppRunner
         try
         {
             var selectedType = availableTypes[selection.Value - 1];
+            // Fordonstyperna kräver olika tilläggsuppgifter, därför skapas den valda konkreta typen här.
             IVehicle vehicle = selectedType == typeof(Airplane)
                 ? new Airplane(registration, color, wheels.Value, ReadPositiveInt("Antal motorer: ") ?? 0)
                 : selectedType == typeof(Motorcycle)
@@ -179,6 +179,7 @@ public sealed class ConsoleAppRunner : IAppRunner
         Console.WriteLine("Fordonstyp: lämna tomt för alla, 1. Flygplan, 2. Motorcykel, 3. Bil, 4. Buss, 5. Båt");
         Console.Write("Typ: ");
         var type = Console.ReadLine();
+        // null betyder alla typer; typeof(void) markerar ett menyval som inte kunde tolkas.
         var vehicleType = type switch
         {
             "1" => typeof(Airplane),
@@ -334,6 +335,7 @@ public sealed class ConsoleAppRunner : IAppRunner
             var input = Console.ReadLine();
             if (input is null)
                 return null;
+            // InvariantCulture kräver punkt som decimaltecken oavsett datorns inställningar; IsFinite avvisar NaN och oändlighet.
             if (double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
                 && value > 0 && double.IsFinite(value))
                 return value;
@@ -347,6 +349,7 @@ public sealed class ConsoleAppRunner : IAppRunner
         {
             Console.Write(prompt);
             var input = Console.ReadLine();
+            // int.MinValue skiljer avslutad inmatning från ett tomt filter; negativa hjultal godkänns ändå inte.
             if (input is null)
                 return int.MinValue;
             if (string.IsNullOrWhiteSpace(input))

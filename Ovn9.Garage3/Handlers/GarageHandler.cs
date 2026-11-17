@@ -56,7 +56,7 @@ public sealed class GarageHandler : IGarageHandler
             return false;
         }
 
-        _garages.Add(name.Trim(), new GarageEntry(kind, new Garage<IVehicle>(capacity)));
+        _garages.Add(name.Trim(), new GarageEntry(kind, new Garage<Vehicle>(capacity)));
         _activeGarageName ??= name.Trim();
         message = $"Garaget '{name.Trim()}' skapades med profilen {SwedishText.GetGarageKindName(kind)} och kapaciteten {capacity}.";
         return true;
@@ -94,7 +94,7 @@ public sealed class GarageHandler : IGarageHandler
             .ToList();
     }
 
-    public bool TryParkVehicle(IVehicle vehicle, out string message)
+    public bool TryParkVehicle(Vehicle vehicle, out string message)
     {
         var (garageName, entry) = GetActiveEntry();
         if (vehicle is null)
@@ -113,7 +113,7 @@ public sealed class GarageHandler : IGarageHandler
         return parked;
     }
 
-    public bool TryRemoveVehicle(string registrationNumber, out IVehicle? vehicle, out string message)
+    public bool TryRemoveVehicle(string registrationNumber, out Vehicle? vehicle, out string message)
     {
         var (garageName, entry) = GetActiveEntry();
         var removed = entry.Garage.TryRemoveVehicle(registrationNumber, out vehicle);
@@ -198,7 +198,7 @@ public sealed class GarageHandler : IGarageHandler
                 if (restored.ContainsKey(savedGarage.Name.Trim()))
                     throw new InvalidDataException($"Garagenamnet '{savedGarage.Name}' förekommer flera gånger.");
 
-                var garage = new Garage<IVehicle>(savedGarage.Capacity, savedGarage.Vehicles);
+                var garage = new Garage<Vehicle>(savedGarage.Capacity, savedGarage.Vehicles);
                 if (garage.Any(vehicle => !IsAllowed(savedGarage.Kind, vehicle.GetType())))
                     throw new InvalidDataException($"Garaget '{savedGarage.Name}' innehåller ett fordon som inte är tillåtet enligt profilen.");
                 restored.Add(savedGarage.Name.Trim(), new GarageEntry(savedGarage.Kind, garage));
@@ -250,7 +250,7 @@ public sealed class GarageHandler : IGarageHandler
         : 3;
 
     // Knyter ihop en garageprofil med dess fordonslista.
-    private sealed record GarageEntry(GarageKind Kind, Garage<IVehicle> Garage);
+    private sealed record GarageEntry(GarageKind Kind, Garage<Vehicle> Garage);
 }
 
 // Beskriver hela garagefilen, inklusive vilket garage som var aktivt när den sparades.
@@ -266,7 +266,7 @@ internal sealed class GarageStoreEntry
     public string Name { get; set; } = string.Empty;
     public GarageKind Kind { get; set; }
     public int Capacity { get; set; }
-    public List<IVehicle> Vehicles { get; set; } = [];
+    public List<Vehicle> Vehicles { get; set; } = [];
 }
 
 // Håller de gemensamma inställningarna för JSON-serialisering av garage.

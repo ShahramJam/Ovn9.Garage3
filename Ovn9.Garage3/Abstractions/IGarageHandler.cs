@@ -1,5 +1,6 @@
 using Ovn9.Garage3.Common;
 using Ovn9.Garage3.Handlers;
+using Ovn9.Garage3.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,8 +15,8 @@ public interface IGarageHandler
     IReadOnlyList<GarageInfo> GetGarages();
     GarageInfo GetActiveGarageInfo();
     IReadOnlyList<Type> GetVehicleTypesThatFit();
-    bool TryParkVehicle(IVehicle vehicle, out string message);
-    bool TryRemoveVehicle(string registrationNumber, out IVehicle? vehicle, out string message);
+    bool TryParkVehicle(Vehicle vehicle, out string message);
+    bool TryRemoveVehicle(string registrationNumber, out Vehicle? vehicle, out string message);
     IVehicle? FindVehicle(string registrationNumber);
     IReadOnlyList<IVehicle> GetVehicles();
     IReadOnlyDictionary<string, int> GetVehicleTypeCounts();

@@ -127,7 +127,7 @@ public sealed class ConsoleAppRunner : IAppRunner
         {
             var selectedType = availableTypes[selection.Value - 1];
             // Fordonstyperna kräver olika tilläggsuppgifter, därför skapas den valda konkreta typen här.
-            IVehicle vehicle = selectedType == typeof(Airplane)
+            Vehicle vehicle = selectedType == typeof(Airplane)
                 ? new Airplane(registration, color, wheels.Value, ReadPositiveInt("Antal motorer: ") ?? 0)
                 : selectedType == typeof(Motorcycle)
                     ? new Motorcycle(registration, color, wheels.Value, ReadPositiveDouble("Cylindervolym (kubikcentimeter): ") ?? 0)

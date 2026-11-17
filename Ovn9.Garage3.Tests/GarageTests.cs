@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging.Abstractions;
-using Ovn9.Garage3.Abstractions;
 using Ovn9.Garage3.Common;
 using Ovn9.Garage3.Handlers;
 using Ovn9.Garage3.Models;
@@ -12,7 +11,7 @@ public class GarageTests
     [Fact]
     public void AddVehicle_WhenCapacityAvailable_AddsVehicle()
     {
-        var garage = new Garage<IVehicle>(1);
+        var garage = new Garage<Vehicle>(1);
         var car = new Car("ABC123", "Black", 4, FuelType.Gasoline);
 
         var added = garage.AddVehicle(car);
@@ -25,7 +24,7 @@ public class GarageTests
     [Fact]
     public void AddVehicle_WhenGarageIsFull_RejectsVehicle()
     {
-        var garage = new Garage<IVehicle>(1, [new Car("ABC123", "Black", 4, FuelType.Gasoline)]);
+        var garage = new Garage<Vehicle>(1, [new Car("ABC123", "Black", 4, FuelType.Gasoline)]);
 
         var added = garage.AddVehicle(new Motorcycle("XYZ789", "Red", 2, 650));
 
@@ -36,7 +35,7 @@ public class GarageTests
     [Fact]
     public void AddVehicle_WhenRegistrationDiffersOnlyByCase_RejectsDuplicate()
     {
-        var garage = new Garage<IVehicle>(2, [new Car("ABC123", "Black", 4, FuelType.Gasoline)]);
+        var garage = new Garage<Vehicle>(2, [new Car("ABC123", "Black", 4, FuelType.Gasoline)]);
 
         var added = garage.AddVehicle(new Motorcycle("abc123", "Red", 2, 650));
 
@@ -47,7 +46,7 @@ public class GarageTests
     public void FindVehicle_WhenRegistrationDiffersByCase_ReturnsVehicle()
     {
         var car = new Car("ABC123", "Black", 4, FuelType.Gasoline);
-        var garage = new Garage<IVehicle>(1, [car]);
+        var garage = new Garage<Vehicle>(1, [car]);
 
         var found = garage.FindVehicle("aBc123");
 
@@ -58,7 +57,7 @@ public class GarageTests
     public void ToString_WhenVehicleIsCar_UsesSwedishLabels()
     {
         var car = new Car("CAR001", "Svart", 4, FuelType.Gasoline);
-        var garage = new Garage<IVehicle>(1, [car]);
+        var garage = new Garage<Vehicle>(1, [car]);
 
         Assert.Equal("Bil: CAR001, Svart, 4 hjul, 1 parkeringsplats, Bensin", car.ToString());
         Assert.Equal(1, garage.GetVehicleTypeCounts()["Bil"]);
@@ -67,7 +66,7 @@ public class GarageTests
     [Fact]
     public void RemoveVehicle_WhenRegistrationDiffersByCase_RemovesVehicle()
     {
-        var garage = new Garage<IVehicle>(1, [new Car("ABC123", "Black", 4, FuelType.Gasoline)]);
+        var garage = new Garage<Vehicle>(1, [new Car("ABC123", "Black", 4, FuelType.Gasoline)]);
 
         var removed = garage.RemoveVehicle("abc123");
 
@@ -79,7 +78,7 @@ public class GarageTests
     public void SearchVehicles_WhenColorAndWheelCountAreProvided_ReturnsVehiclesMatchingBoth()
     {
         var matchingCar = new Car("ABC123", "Black", 4, FuelType.Gasoline);
-        var garage = new Garage<IVehicle>(3,
+        var garage = new Garage<Vehicle>(3,
         [
             matchingCar,
             new Bus("BUS123", "Black", 6, 40, FuelType.Diesel),
@@ -94,25 +93,25 @@ public class GarageTests
     [Fact]
     public void Constructor_WhenInitialVehiclesExceedCapacity_ThrowsArgumentException()
     {
-        var vehicles = new IVehicle[]
+        var vehicles = new Vehicle[]
         {
             new Car("ABC123", "Black", 4, FuelType.Gasoline),
             new Motorcycle("XYZ789", "Red", 2, 650)
         };
 
-        Assert.Throws<ArgumentException>(() => new Garage<IVehicle>(1, vehicles));
+        Assert.Throws<ArgumentException>(() => new Garage<Vehicle>(1, vehicles));
     }
 
     [Fact]
     public void Constructor_WhenCapacityIsNotPositive_ThrowsArgumentOutOfRangeException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new Garage<IVehicle>(0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Garage<Vehicle>(0));
     }
 
     [Fact]
     public void AddVehicle_WhenParkingSpaceIsFractional_UsesThirdsWithoutRoundingErrors()
     {
-        var garage = new Garage<IVehicle>(1);
+        var garage = new Garage<Vehicle>(1);
 
         Assert.True(garage.AddVehicle(new Motorcycle("MOT001", "Red", 2, 650)));
         Assert.True(garage.AddVehicle(new Motorcycle("MOT002", "Blue", 2, 500)));
@@ -125,7 +124,7 @@ public class GarageTests
     [Fact]
     public void AddVehicle_WhenVehicleNeedsMultipleSpaces_RejectsVehicleThatDoesNotFit()
     {
-        var garage = new Garage<IVehicle>(2);
+        var garage = new Garage<Vehicle>(2);
 
         var parked = garage.AddVehicle(new Boat("BOA001", "White", 0, 7.5));
         var airplaneParked = garage.AddVehicle(new Airplane("AIR001", "Blue", 3, 2));
@@ -139,7 +138,7 @@ public class GarageTests
     public void SearchVehicles_WhenVehiclePropertyIsProvided_FiltersSubclassProperty()
     {
         var dieselBus = new Bus("BUS001", "Yellow", 6, 40, FuelType.Diesel);
-        var garage = new Garage<IVehicle>(4,
+        var garage = new Garage<Vehicle>(4,
         [
             dieselBus,
             new Bus("BUS002", "Yellow", 6, 20, FuelType.Gasoline),

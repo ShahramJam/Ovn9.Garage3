@@ -9,7 +9,7 @@ using System.Linq;
 namespace Ovn9.Garage3.Models;
 
 // Hanterar fordon upp till angiven kapacitet samt parkering, borttagning och sökning
-public sealed class Garage<T> : IEnumerable<T> where T : IVehicle
+public sealed class Garage<T> : IEnumerable<T> where T : Vehicle
 {
     private readonly List<T> _vehicles = [];
 

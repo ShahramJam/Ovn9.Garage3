@@ -2,10 +2,17 @@ using Ovn9.Garage3.Abstractions;
 using Ovn9.Garage3.Common;
 using System;
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace Ovn9.Garage3.Models;
 
 // Gemensam basklass för fordonens grundegenskaper, validering och textrepresentation
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$vehicleType")]
+[JsonDerivedType(typeof(Airplane), "airplane")]
+[JsonDerivedType(typeof(Motorcycle), "motorcycle")]
+[JsonDerivedType(typeof(Car), "car")]
+[JsonDerivedType(typeof(Bus), "bus")]
+[JsonDerivedType(typeof(Boat), "boat")]
 public abstract class Vehicle : IVehicle
 {
     protected Vehicle(string registrationNumber, string color, int numberOfWheels)
